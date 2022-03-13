@@ -20,11 +20,11 @@ class ABSADataset(Dataset):
 
           # Get Polarity, category and aspect
           if line[0] == "positive":
-            polarity = 1
+            polarity = 2
           elif line[0] == "negative":
-            polarity = -1
-          elif line[0] == "neutral" :
             polarity = 0
+          elif line[0] == "neutral" :
+            polarity = 1
           else :
             raise("Polarity problem")
 
@@ -48,7 +48,6 @@ class ABSADataset(Dataset):
           left_len = np.sum(left_indices != 0)
           aspect_len = np.sum(aspect_indices != 0)
           aspect_boundary = np.asarray([left_len, left_len + aspect_len - 1], dtype=np.int64)
-          polarity = int(polarity) + 1
 
           text_len = np.sum(text_indices != 0)
           concat_bert_indices = tokenizer.text_to_sequence('[CLS] ' + text_left + " " + aspect + " " + text_right + ' [SEP] ' + aspect + " [SEP]")

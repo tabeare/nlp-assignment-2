@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import copy
 from sklearn import metrics
 import torch
 import torch.nn as nn
@@ -36,14 +37,14 @@ class Classifier:
         trainset = ABSADataset(trainfile, self.tokenizer)
         valset = ABSADataset(devfile, self.tokenizer)
 
-        batch_size = 64
+        batch_size = 32
         train_data_loader = DataLoader(dataset=trainset, batch_size=batch_size, shuffle=True)
         val_data_loader = DataLoader(dataset=valset, batch_size=batch_size, shuffle=False)
 
         self.reset_params(self.model, torch.nn.init.xavier_uniform_)
 
-        epochs = 1
-        lr = 2e-4
+        epochs = 10
+        lr = 1e-4
         weight_decay = 0.01
         print_step = 5
         patience = 5
@@ -52,10 +53,11 @@ class Classifier:
         optimizer = torch.optim.Adam(self.model.parameters(), lr, weight_decay=weight_decay)
 
         max_val_acc, max_val_f1, max_val_epoch, global_step = 0, 0, 0, 0
+        best_model = copy.deepcopy(self.model)
 
         for epoch in range(epochs):
             print('>' * 100)
-            print('epoch: {}'.format(epoch))
+            print(f'epoch: {epoch}')
             n_correct, n_total, loss_total = 0, 0, 0
             self.model.train()
             for batch in train_data_loader:
@@ -85,6 +87,7 @@ class Classifier:
             if val_acc > max_val_acc:
                 max_val_acc = val_acc
                 max_val_epoch = epoch
+                best_model = copy.deepcopy(self.model)
 
             if val_f1 > max_val_f1:
                 max_val_f1 = val_f1
@@ -95,25 +98,27 @@ class Classifier:
 
         print("Best Validation Accuracy : {:.4f}".format(max_val_acc))
         print("Best F1-score : {:.4f}".format(max_val_f1))
+        self.model = best_model
 
     def predict(self, datafile):
         """Predicts class labels for the input instances in file 'datafile'
         Returns the list of predicted labels
         """
         dataset = ABSADataset(datafile, self.tokenizer)
-        test_data_loader = DataLoader(
-            dataset=dataset, batch_size=64, shuffle=False)
+        test_data_loader = DataLoader(dataset=dataset, batch_size=16, shuffle=False)
 
         self.model.eval()
 
-        preds = []
+        all_preds = torch.tensor([]).to(self.device)
         for batch in test_data_loader:
             inputs = [batch[col].to(self.device) for col in self.inputs_col]
             outputs = self.model(inputs)
-            pred = torch.argmax(outputs, -1)
-            preds.append(pred)
+            batch_pred = torch.argmax(outputs, -1)
+            all_preds = torch.concat((all_preds, batch_pred))
 
-        return preds
+        all_preds = all_preds.tolist()
+        result = list(map(lambda x: str(int(x)).replace('1', 'neutral').replace('0', 'negative').replace('2', 'positive'), all_preds))
+        return result
 
     def reset_params(self, model, initializer):
         for child in model.children():
@@ -128,28 +133,23 @@ class Classifier:
 
     def evaluate_acc_f1(self, data_loader):
         n_correct, n_total = 0, 0
-        t_targets_all, t_outputs_all = None, None
+        t_targets_all, t_outputs_all = torch.tensor([]).to(self.device), torch.tensor([]).to(self.device)
         # switch model to evaluation mode
         self.model.eval()
         with torch.no_grad():
             for batch in data_loader:
                 t_inputs = [batch[col].to(self.device) for col in self.inputs_col]
+                t_outputs = torch.argmax(self.model(t_inputs), -1)
                 t_targets = batch['polarity'].to(self.device)
-                t_outputs = self.model(t_inputs)
-
-                n_correct += (torch.argmax(t_outputs, -1) == t_targets).sum().item()
+                
+                n_correct += (t_outputs==t_targets).sum().item()
                 n_total += len(t_outputs)
 
-                if t_targets_all is None:
-                    t_targets_all = t_targets
-                    t_outputs_all = t_outputs
-                else:
-                    t_targets_all = torch.cat((t_targets_all, t_targets), dim=0)
-                    t_outputs_all = torch.cat((t_outputs_all, t_outputs), dim=0)
+                t_outputs_all = torch.cat((t_outputs_all, t_outputs), dim=0)
+                t_targets_all = torch.cat((t_targets_all, t_targets), dim=0)
 
         acc = n_correct / n_total
-        f1 = metrics.f1_score(t_targets_all.cpu(), torch.argmax(t_outputs_all, -1).cpu(),
-                              labels=[0, 1, 2], average='weighted')
+        f1 = metrics.f1_score(t_targets_all.cpu(), t_outputs_all.cpu(), labels=[0, 1, 2], average='weighted')
         return acc, f1
 
 
@@ -175,7 +175,6 @@ class LCF_BERT(nn.Module):
     def feature_dynamic_mask(self, text_local_indices, aspect_indices):
         texts = text_local_indices.cpu().numpy()
         asps = aspect_indices.cpu().numpy()
-        mask_len = self.SRD
         masked_text_raw_indices = np.ones((text_local_indices.size(0), self.max_seq_len, self.bert_dim),
                                           dtype=np.float32)
         for text_i, asp_i in zip(range(len(texts)), range(len(asps))):
@@ -184,13 +183,13 @@ class LCF_BERT(nn.Module):
                 asp_begin = np.argwhere(texts[text_i] == asps[asp_i][1])[0][0]
             except:
                 continue
-            if asp_begin >= mask_len:
-                mask_begin = asp_begin - mask_len
+            if asp_begin >= self.SRD:
+                mask_begin = asp_begin - self.SRD
             else:
                 mask_begin = 0
             for i in range(mask_begin):
                 masked_text_raw_indices[text_i][i] = np.zeros((self.bert_dim), dtype=np.float)
-            for j in range(asp_begin + asp_len + mask_len, self.max_seq_len):
+            for j in range(asp_begin + asp_len + self.SRD, self.max_seq_len):
                 masked_text_raw_indices[text_i][j] = np.zeros((self.bert_dim), dtype=np.float)
         masked_text_raw_indices = torch.from_numpy(masked_text_raw_indices)
         return masked_text_raw_indices.to(self.device)
@@ -220,10 +219,7 @@ class LCF_BERT(nn.Module):
         return masked_text_raw_indices.to(self.device)
 
     def forward(self, inputs):
-        text_bert_indices = inputs[0]
-        bert_segments_ids = inputs[1]
-        text_local_indices = inputs[2]
-        aspect_indices = inputs[3]
+        text_bert_indices, bert_segments_ids, text_local_indices, aspect_indices = inputs
 
         bert_spc_out, _ = self.bert_spc(
             text_bert_indices, token_type_ids=bert_segments_ids, return_dict=False)
