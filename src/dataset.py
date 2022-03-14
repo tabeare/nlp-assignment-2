@@ -15,7 +15,7 @@ class ABSADataset(Dataset):
         lines = [line.strip().split("\t") for line in fin if line.strip()]
         fin.close()
 
-        # encode aspect categories to numbers
+        #Encode aspect categories as numbers
         categories = [element[1] for element in lines]
         cat_encoder = sklearn.preprocessing.LabelEncoder()
         cat_encoder.fit(categories)
@@ -24,7 +24,7 @@ class ABSADataset(Dataset):
         all_data = []
         for i, line in enumerate(lines):
 
-            # Transform polarity to numeric 
+            #Encode polarity as numbers
             if line[0] == "positive":
                 polarity = 2
             elif line[0] == "negative":
@@ -34,18 +34,18 @@ class ABSADataset(Dataset):
             else:
                 raise("Polarity problem")
 
-            # get category and aspect
+            #Gather category and aspect
             category = le_cat[i]
             aspect = line[2]
 
-            # Get text right and left of keyword
+            #Gather surrounding text right and left of keyword
             index_colon = line[3].index(':')
             start_num = int(line[3][:index_colon])
             end_num = int(line[3][index_colon+1:len(line[3])])
             text_left = line[4][:start_num].strip()
             text_right = line[4][end_num:].strip()
 
-
+            #Create features
             text_indices = tokenizer.text_to_sequence(text_left + " " + aspect + " " + text_right)
             context_indices = tokenizer.text_to_sequence(text_left + " " + text_right)
             left_indices = tokenizer.text_to_sequence(text_left)
@@ -67,7 +67,7 @@ class ABSADataset(Dataset):
                 "[CLS] " + text_left + " " + aspect + " " + text_right + " [SEP]")
             aspect_bert_indices = tokenizer.text_to_sequence("[CLS] " + aspect + " [SEP]")
 
-            # all features 
+            #Get features
             data = {
                 'concat_bert_indices': concat_bert_indices,
                 'concat_segments_indices': concat_segments_indices,
