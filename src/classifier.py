@@ -21,12 +21,15 @@ class Classifier:
     def __init__(self):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-        # input features that will be fed to model
+        #Input features
         self.inputs_col = ['concat_bert_indices', 'concat_segments_indices',
                            'text_bert_indices', 'aspect_bert_indices']
+        #Max sequence length
         max_seq_len = 80
+        #Chosen BERT model
         pretrained_bert_name = 'bert-base-uncased'
-
+        
+        #Define tokenizer
         self.tokenizer = Tokenizer4Bert(max_seq_len, pretrained_bert_name)
         bert = BertModel.from_pretrained(pretrained_bert_name)
         self.model = LCF_BERT(bert=bert, dropout=0.4, bert_dim=768, polarities_dim=3, max_seq_len=max_seq_len,
@@ -38,27 +41,34 @@ class Classifier:
         WARNING: DO NOT USE THE DEV DATA AS TRAINING EXAMPLES, YOU CAN USE THEM ONLY FOR THE OPTIMIZATION
          OF MODEL HYPERPARAMETERS
         """
+        #Define train and val set
         trainset = ABSADataset(trainfile, self.tokenizer)
         valset = ABSADataset(devfile, self.tokenizer)
-
-        batch_size = 32
+        
+        #Define batch size
+        batch_size = 16
+        
+        #Create dataloaders
         train_data_loader = DataLoader(dataset=trainset, batch_size=batch_size, shuffle=True)
         val_data_loader = DataLoader(dataset=valset, batch_size=batch_size, shuffle=False)
 
         self.reset_params(self.model, torch.nn.init.xavier_uniform_)
-
+        
+        #Hyperparameters
         epochs = 10
         lr = 1e-4
         weight_decay = 0.01
         print_step = 5
         patience = 5
-
+        
+        #Loss function & optimizer
         criterion = nn.CrossEntropyLoss()
         optimizer = torch.optim.Adam(self.model.parameters(), lr, weight_decay=weight_decay)
 
         max_val_acc, max_val_f1, max_val_epoch, global_step = 0, 0, 0, 0
         best_model = copy.deepcopy(self.model)
-
+        
+        #Training
         for epoch in range(epochs):
             print('>' * 100)
             print(f'epoch: {epoch}')
@@ -84,10 +94,12 @@ class Classifier:
                     train_acc = n_correct / n_total
                     train_loss = loss_total / n_total
                     print('loss: {:.4f}, acc: {:.4f}'.format(train_loss, train_acc))
-
+            
+            #Validation
             val_acc, val_f1 = self.evaluate_acc_f1(val_data_loader)
             print('> val_acc: {:.4f}, val_f1: {:.4f}'.format(val_acc, val_f1))
-
+            
+            #Save model with best validation accuracy
             if val_acc > max_val_acc:
                 max_val_acc = val_acc
                 max_val_epoch = epoch
@@ -108,9 +120,12 @@ class Classifier:
         """Predicts class labels for the input instances in file 'datafile'
         Returns the list of predicted labels
         """
+        
+        #Define dataset & dataloader
         dataset = ABSADataset(datafile, self.tokenizer)
         test_data_loader = DataLoader(dataset=dataset, batch_size=16, shuffle=False)
-
+        
+        #Switch model to evaluation mode
         self.model.eval()
 
         all_preds = torch.tensor([]).to(self.device)
@@ -144,7 +159,7 @@ class Classifier:
         '''
         n_correct, n_total = 0, 0
         t_targets_all, t_outputs_all = torch.tensor([]).to(self.device), torch.tensor([]).to(self.device)
-        # switch model to evaluation mode
+        #Switch model to evaluation mode
         self.model.eval()
         with torch.no_grad():
             for batch in data_loader:

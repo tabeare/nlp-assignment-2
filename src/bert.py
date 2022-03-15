@@ -4,13 +4,16 @@ import torch
 import torch.nn as nn
 from transformers.models.bert.modeling_bert import BertPooler, BertSelfAttention
 
+#Local Context Focus implementation of BERT
+#See https://mdpi-res.com/d_attachment/applsci/applsci-09-03389/article_deploy/applsci-09-03389-v3.pdf
 class LCF_BERT(nn.Module):
     '''
     Class implementing local context focus mechanism for aspect-based sentiment classification
     '''
     def __init__(self, bert, dropout, bert_dim, polarities_dim, max_seq_len, device, SRD, local_context_focus):
         super(LCF_BERT, self).__init__()
-
+        
+        #Define and assign parameters, layers, etc.
         self.bert_spc = bert
         self.bert_local = bert   
         self.dropout = nn.Dropout(dropout)
@@ -219,7 +222,7 @@ class CustomBertSelfAttention(BertSelfAttention):
 
         attention_scores = attention_scores / math.sqrt(self.attention_head_size)
         if attention_mask is not None:
-            # Apply the attention mask is (precomputed for all layers in BertModel forward() function)
+            # Apply the attention mask (precomputed for all layers in BertModel forward() function)
             attention_scores = attention_scores + attention_mask
 
         # Normalize the attention scores to probabilities.
