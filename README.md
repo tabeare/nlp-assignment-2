@@ -29,11 +29,11 @@ Our model is building on a pretrained BERT transformers model, first presenented
 For the ABS classification, we build a local context focus mechanism model, which was presented by (Zeng et al. 2019)[https://mdpi-res.com/d_attachment/applsci/applsci-09-03389/article_deploy/applsci-09-03389-v3.pdf]. This model internally uses a BERT Self Attention with multiple attention heads.
 
 ## Results
-Running the ```tester.py``` file, our model achieved the following results:
+Running the ```tester.py``` script, our model achieved the following results over 5 runs:
 
-Dev accs: [86.97, 87.23, 86.44, 87.23, 86.97]
+Dev (Validation) accuracies: [86.97, 87.23, 86.44, 87.23, 86.97]
 
-Test accs: [-1, -1, -1, -1, -1]
+Test accuaracies: [-1, -1, -1, -1, -1]
 
 Mean Dev Acc.: 86.97 (0.29)
 
