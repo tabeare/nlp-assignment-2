@@ -2,17 +2,17 @@ import math
 import numpy as np
 import torch
 import torch.nn as nn
-from transformers.models.bert.modeling_bert import BertPooler
+from transformers.models.bert.modeling_bert import BertPooler, BertSelfAttention
 
 class LCF_BERT(nn.Module):
     '''
+    Class implementing local context focus mechanism for aspect-based sentiment classification
     '''
     def __init__(self, bert, dropout, bert_dim, polarities_dim, max_seq_len, device, SRD, local_context_focus):
         super(LCF_BERT, self).__init__()
 
         self.bert_spc = bert
-        # self.bert_local = copy.deepcopy(bert)  # Uncomment the line to use dual Bert
-        self.bert_local = bert   # Default to use single Bert and reduce memory requirements
+        self.bert_local = bert   
         self.dropout = nn.Dropout(dropout)
         self.device = device
         self.bert_SA = SelfAttention(bert.config, max_seq_len, self.device)
@@ -103,7 +103,7 @@ class SelfAttention(nn.Module):
         super(SelfAttention, self).__init__()
         self.device = device
         self.max_seq_len = max_seq_len
-        self.SA = BertSelfAttention(config)
+        self.SA = CustomBertSelfAttention(config)
         self.tanh = nn.Tanh()
 
     def forward(self, inputs):
@@ -113,7 +113,8 @@ class SelfAttention(nn.Module):
         return self.tanh(SA_out[0])
 
 
-class BertSelfAttention(nn.Module):
+# TODO: Remove redundant code here (overwrite only what is necessary and inherit the rest)
+class CustomBertSelfAttention(BertSelfAttention):
     def __init__(self, config):
         super().__init__()
         if config.hidden_size % config.num_attention_heads != 0 and not hasattr(config, "embedding_size"):
