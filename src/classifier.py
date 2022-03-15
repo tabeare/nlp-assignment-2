@@ -55,8 +55,8 @@ class Classifier:
         self.reset_params(self.model, torch.nn.init.xavier_uniform_)
         
         #Hyperparameters
-        epochs = 10
-        lr = 2e-5
+        epochs = 15
+        lr = 5e-6
         weight_decay = 0.01
         print_step = 5
         patience = 5
