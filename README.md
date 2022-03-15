@@ -32,9 +32,11 @@ For the ABS classification, we build a local context focus mechanism model, whic
 Running the ```tester.py``` file, our model achieved the following results:
 
 Dev accs: [86.97, 87.23, 86.44, 87.23, 86.97]
+
 Test accs: [-1, -1, -1, -1, -1]
 
-Mean Dev Acc.: 86.97 (0.29)\\
+Mean Dev Acc.: 86.97 (0.29)
+
 Mean Test Acc.: -1.00 (0.00)
 
 Exec time: 1590.73 s. ( 318 per run )
