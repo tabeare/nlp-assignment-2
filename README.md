@@ -28,4 +28,13 @@ The goal of this project is to predict the polarity (negative, neutral or positi
 Our model is building on a pretrained BERT transformers model, first presenented by (Devlin et al. 2018)[https://arxiv.org/abs/1810.04805]. We use the BERT model as an encoder of the sentences and use the encoded sentences with a further classification model to predict the polarities. 
 For the ABS classification, we build a local context focus mechanism model, which was presented by (Zeng et al. 2019)[https://mdpi-res.com/d_attachment/applsci/applsci-09-03389/article_deploy/applsci-09-03389-v3.pdf]. This model internally uses a BERT Self Attention with multiple attention heads.
 
-## Results 
+## Results
+Running the ```tester.py``` file, our model achieved the following results:
+
+Dev accs: [86.97, 87.23, 86.44, 87.23, 86.97]
+Test accs: [-1, -1, -1, -1, -1]
+
+Mean Dev Acc.: 86.97 (0.29)
+Mean Test Acc.: -1.00 (0.00)
+
+Exec time: 1590.73 s. ( 318 per run )
