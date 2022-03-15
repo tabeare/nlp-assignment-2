@@ -2,20 +2,17 @@ import math
 import numpy as np
 import torch
 import torch.nn as nn
-from transformers.models.bert.modeling_bert import BertPooler, BertSelfAttention
+from transformers.models.bert.modeling_bert import BertPooler
 
 #Local Context Focus implementation of BERT
 #See https://mdpi-res.com/d_attachment/applsci/applsci-09-03389/article_deploy/applsci-09-03389-v3.pdf
 class LCF_BERT(nn.Module):
-    '''
-    Class implementing local context focus mechanism for aspect-based sentiment classification
-    '''
     def __init__(self, bert, dropout, bert_dim, polarities_dim, max_seq_len, device, SRD, local_context_focus):
         super(LCF_BERT, self).__init__()
         
         #Define and assign parameters, layers, etc.
         self.bert_spc = bert
-        self.bert_local = bert   
+        self.bert_local = bert
         self.dropout = nn.Dropout(dropout)
         self.device = device
         self.bert_SA = SelfAttention(bert.config, max_seq_len, self.device)
@@ -106,7 +103,7 @@ class SelfAttention(nn.Module):
         super(SelfAttention, self).__init__()
         self.device = device
         self.max_seq_len = max_seq_len
-        self.SA = CustomBertSelfAttention(config)
+        self.SA = BertSelfAttention(config)
         self.tanh = nn.Tanh()
 
     def forward(self, inputs):
@@ -116,8 +113,7 @@ class SelfAttention(nn.Module):
         return self.tanh(SA_out[0])
 
 
-# TODO: Remove redundant code here (overwrite only what is necessary and inherit the rest)
-class CustomBertSelfAttention(BertSelfAttention):
+class BertSelfAttention(nn.Module):
     def __init__(self, config):
         super().__init__()
         if config.hidden_size % config.num_attention_heads != 0 and not hasattr(config, "embedding_size"):
